@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Desafio do Jornal Escolar</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#0b3d91,#1976d2);min-height:100vh;color:#17324d}
+.container{max-width:850px;margin:0 auto;padding:28px 16px}
+.card{background:#fff;border-radius:24px;padding:28px;box-shadow:0 15px 40px rgba(0,0,0,.22)}
+header{text-align:center;margin-bottom:22px}
+.badge{display:inline-block;background:#ffd54f;color:#17324d;font-weight:700;padding:7px 14px;border-radius:30px;font-size:14px}
+h1{margin:12px 0 6px;font-size:34px}
+.subtitle{color:#607d8b;margin:0}
+.progress{height:10px;background:#e8eef3;border-radius:20px;overflow:hidden;margin:24px 0 8px}
+.progress-bar{height:100%;background:#1976d2;width:0%;transition:.3s}
+.info{display:flex;justify-content:space-between;font-weight:700;color:#526777;margin-bottom:20px}
+.question{font-size:24px;font-weight:700;line-height:1.3;margin:18px 0}
+.answers{display:grid;gap:12px}
+.answer{border:2px solid #d7e1e8;background:#f8fafc;border-radius:14px;padding:15px 16px;text-align:left;font-size:17px;cursor:pointer;transition:.2s}
+.answer:hover{border-color:#1976d2;background:#eef6ff;transform:translateY(-1px)}
+.answer.correct{background:#dff5e7;border-color:#2e9d57;color:#176b38}
+.answer.wrong{background:#ffe2e2;border-color:#d64545;color:#9c2222}
+.answer:disabled{cursor:default;transform:none}
+.feedback{min-height:28px;margin:16px 0 4px;font-weight:700}
+button.next,.start{border:0;background:#0b3d91;color:white;border-radius:13px;padding:13px 22px;font-size:17px;font-weight:700;cursor:pointer}
+button.next{display:none;margin-top:12px}
+button.next:hover,.start:hover{background:#082f70}
+.result{text-align:center;display:none}
+.score{font-size:58px;font-weight:800;color:#0b3d91;margin:15px}
+.message{font-size:19px;margin-bottom:22px}
+.small{font-size:13px;color:#78909c;margin-top:20px}
+@media(max-width:600px){h1{font-size:27px}.question{font-size:20px}.card{padding:20px}.info{font-size:14px}}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="card">
+<header>
+<span class="badge">📰 JORNAL ESCOLAR</span>
+<h1>Desafio do Jornal</h1>
+<p class="subtitle">Teste seus conhecimentos e veja quantos pontos consegue fazer!</p>
+</header>
+
+<div id="game">
+<div class="progress"><div class="progress-bar" id="bar"></div></div>
+<div class="info"><span id="counter">Pergunta 1 de 10</span><span>⭐ <span id="score">0</span> pontos</span></div>
+<div class="question" id="question"></div>
+<div class="answers" id="answers"></div>
+<div class="feedback" id="feedback"></div>
+<button class="next" id="next">Próxima pergunta →</button>
+</div>
+
+<div class="result" id="result">
+<h2>🎉 Desafio concluído!</h2>
+<div class="score" id="finalScore">0/10</div>
+<div class="message" id="message"></div>
+<button class="start" onclick="restart()">Jogar novamente</button>
+<p class="small">Compartilhe sua pontuação com os colegas!</p>
+</div>
+</div>
+</div>
+
+<script>
+const questions = [
+ {q:"Qual é a principal função de um jornal escolar?", a:["Divertir apenas os professores","Informar e dar voz à comunidade escolar","Substituir todas as aulas","Publicar somente notícias esportivas"], c:1},
+ {q:"Antes de publicar uma notícia, o jornalista deve principalmente:", a:["Inventar um título chamativo","Copiar de qualquer rede social","Verificar as informações e as fontes","Publicar o mais rápido possível"], c:2},
+ {q:"Qual pergunta ajuda a identificar o local de um acontecimento?", a:["Onde?","Por quê?","Quem?","Quando?"], c:0},
+ {q:"Uma entrevista jornalística serve principalmente para:", a:["Coletar informações e opiniões de uma fonte","Escolher o uniforme da escola","Fazer propaganda de produtos","Substituir uma fotografia"], c:0},
+ {q:"Qual destes é um gênero jornalístico?", a:["Receita culinária apenas","Notícia","Lista de compras","Bilhete pessoal"], c:1},
+ {q:"Por que a fotografia é importante em uma matéria?", a:["Porque sempre substitui o texto","Porque ajuda a ilustrar e contextualizar o acontecimento","Porque deixa a matéria obrigatoriamente maior","Porque elimina a necessidade de fontes"], c:1},
+ {q:"O que significa checar uma informação?", a:["Compartilhá-la com muitas pessoas","Confirmá-la em fontes confiáveis","Mudar o título","Apagar a notícia"], c:1},
+ {q:"Em um artigo de opinião, o autor apresenta principalmente:", a:["Uma opinião argumentada sobre um tema","Somente números","Apenas imagens","Uma lista de presença"], c:0},
+ {q:"Qual atitude é importante para um jornalista escolar?", a:["Respeito, responsabilidade e ética","Pressa e boatos","Copiar tudo da internet","Publicar informações pessoais sem autorização"], c:0},
+ {q:"Qual é uma boa prática ao produzir uma notícia sobre a escola?", a:["Ouvir diferentes envolvidos e conferir os fatos","Publicar rumores","Alterar uma fala para ficar mais engraçada","Usar qualquer foto sem autorização"], c:0}
+];
+
+let current=0, score=0, answered=false;
+
+const qEl=document.getElementById("question");
+const aEl=document.getElementById("answers");
+const feedback=document.getElementById("feedback");
+const next=document.getElementById("next");
+const counter=document.getElementById("counter");
+const scoreEl=document.getElementById("score");
+const bar=document.getElementById("bar");
+
+function loadQuestion(){
+ answered=false;
+ feedback.textContent="";
+ next.style.display="none";
+ const item=questions[current];
+ counter.textContent=`Pergunta ${current+1} de ${questions.length}`;
+ qEl.textContent=item.q;
+ aEl.innerHTML="";
+ item.a.forEach((text,i)=>{
+   const b=document.createElement("button");
+   b.className="answer";
+   b.textContent=text;
+   b.onclick=()=>check(i,b);
+   aEl.appendChild(b);
+ });
+ bar.style.width=(current/questions.length*100)+"%";
+}
+function check(i,button){
+ if(answered)return;
+ answered=true;
+ const correct=questions[current].c;
+ [...aEl.children].forEach((b,idx)=>{
+   b.disabled=true;
+   if(idx===correct)b.classList.add("correct");
+ });
+ if(i===correct){
+   score++;
+   scoreEl.textContent=score;
+   feedback.textContent="✅ Muito bem! Resposta correta.";
+   feedback.style.color="#23834a";
+ }else{
+   button.classList.add("wrong");
+   feedback.textContent="❌ Quase! A resposta correta está destacada.";
+   feedback.style.color="#b52b2b";
+ }
+ next.style.display="inline-block";
+ bar.style.width=((current+1)/questions.length*100)+"%";
+}
+next.onclick=()=>{
+ current++;
+ if(current<questions.length)loadQuestion();
+ else finish();
+};
+function finish(){
+ document.getElementById("game").style.display="none";
+ document.getElementById("result").style.display="block";
+ document.getElementById("finalScore").textContent=score+"/"+questions.length;
+ let msg=score>=9?"🏆 Excelente! Você tem perfil de grande jornalista escolar!":
+         score>=7?"👏 Muito bom! Você está no caminho certo!":
+         score>=5?"👍 Bom trabalho! Continue acompanhando o jornal escolar!":
+         "💡 Vale a pena ler mais matérias e tentar novamente!";
+ document.getElementById("message").textContent=msg;
+}
+function restart(){
+ current=0; score=0; scoreEl.textContent=0;
+ document.getElementById("result").style.display="none";
+ document.getElementById("game").style.display="block";
+ loadQuestion();
+}
+loadQuestion();
+</script>
+</body>
+</html>
